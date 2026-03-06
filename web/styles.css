@@ -55,6 +55,16 @@ header {
   color: #244b80;
 }
 
+.tutorial-card h3 {
+  margin: 0.7rem 0 0.35rem 0;
+  color: #153b75;
+}
+
+.tutorial-example {
+  margin: 0.35rem 0;
+  color: #214d8c;
+}
+
 .tutorial-actions {
   margin-top: 0.7rem;
 }
@@ -74,6 +84,25 @@ label {
   flex-direction: column;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.label-text::after {
+  content: "?";
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #d7e7ff;
+  color: #1c4f98;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 input, button {

@@ -100,5 +100,5 @@ export function determineNextLevel(currentLevel, score) {
 
 export function startLevelFromHistory(history) {
   const passed = history.filter((h) => h.passed).map((h) => h.level);
-  return passed.length ? Math.max(...passed) + 1 : 2;
+  return passed.length ? Math.max(...passed) + 1 : 3;
 }

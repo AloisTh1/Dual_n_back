@@ -203,7 +203,7 @@ function App() {
   function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     setHistory([]);
-    setLevel(2);
+    setLevel(3);
     setStatusText("History cleared.");
     setScoreText("Score: -");
     setPositionFeedback("neutral");
@@ -247,6 +247,17 @@ function App() {
             h("li", null, "Green means correct detection. Red means miss or false positive."),
             h("li", null, "You need at least 70% to pass and unlock the next N level."),
           ),
+          h("h3", null, "Example (Dual 3-back)"),
+          h(
+            "p",
+            { className: "tutorial-example" },
+            "Letters: A, C, B, D, E, B. At round 6, compare to round 3: both are B. Press Audio (L). If you press L, feedback is green; if not, red.",
+          ),
+          h(
+            "p",
+            { className: "tutorial-example" },
+            "Positions: 2, 7, 4, 1, 5, 4. At round 6, compare to round 3: both are tile 4. Press Position (A). If you press A, feedback is green; if not, red.",
+          ),
           h(
             "div",
             { className: "tutorial-actions" },
@@ -266,12 +277,12 @@ function App() {
     h(
       "section",
       { className: "controls" },
-      controlNumber("N level", level, setLevel, 1, isRunning),
-      controlNumber("Rounds", rounds, setRounds, 6, isRunning),
-      controlNumber("Stimulus ms", stimulusMs, setStimulusMs, 200, isRunning),
-      controlNumber("Gap ms", gapMs, setGapMs, 100, isRunning),
-      controlText("Position key", positionKey, setPositionKey, isRunning),
-      controlText("Audio key", letterKey, setLetterKey, isRunning),
+      controlNumber("N level", "How many rounds back to compare (default starts at 3).", level, setLevel, 1, isRunning),
+      controlNumber("Rounds", "How many stimuli in one session. More rounds gives more stable scoring.", rounds, setRounds, 6, isRunning),
+      controlNumber("Stimulus ms", "How long each stimulus is shown, in milliseconds.", stimulusMs, setStimulusMs, 200, isRunning),
+      controlNumber("Gap ms", "Delay between stimuli, in milliseconds.", gapMs, setGapMs, 100, isRunning),
+      controlText("Position key", "Key used when current tile matches N-back tile (default A).", positionKey, setPositionKey, isRunning),
+      controlText("Audio key", "Key used when spoken letter matches N-back letter (default L).", letterKey, setLetterKey, isRunning),
       h(
         "button",
         { id: "startBtn", onClick: startSession, disabled: isRunning },
@@ -359,29 +370,31 @@ function App() {
   );
 }
 
-function controlNumber(label, value, setter, min, disabled) {
+function controlNumber(label, tooltip, value, setter, min, disabled) {
   return h(
     "label",
-    null,
-    label,
+    { title: tooltip },
+    h("span", { className: "label-text" }, label),
     h("input", {
       type: "number",
       min,
       value,
+      title: tooltip,
       disabled,
       onChange: (e) => setter(Number(e.target.value)),
     }),
   );
 }
 
-function controlText(label, value, setter, disabled) {
+function controlText(label, tooltip, value, setter, disabled) {
   return h(
     "label",
-    null,
-    label,
+    { title: tooltip },
+    h("span", { className: "label-text" }, label),
     h("input", {
       value,
       maxLength: 1,
+      title: tooltip,
       disabled,
       onChange: (e) => setter(e.target.value.toLowerCase()),
     }),

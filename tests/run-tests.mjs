@@ -144,7 +144,7 @@ run("startLevelFromHistory starts from highest passed + 1", () => {
     { level: 4, passed: true },
   ];
   assert.equal(startLevelFromHistory(history), 5);
-  assert.equal(startLevelFromHistory([]), 2);
+  assert.equal(startLevelFromHistory([]), 3);
 });
 
 console.log("All tests passed.");
