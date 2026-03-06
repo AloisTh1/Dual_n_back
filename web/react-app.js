@@ -31,12 +31,23 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function speakLetter(letter) {
+function pickPreferredVoice(voices) {
+  const preferredTokens = ["zira", "samantha", "victoria", "female", "ava", "aria", "susan", "serena"];
+  const lowerVoices = voices.map((v) => ({ voice: v, name: v.name.toLowerCase() }));
+  for (const token of preferredTokens) {
+    const hit = lowerVoices.find((v) => v.name.includes(token));
+    if (hit) return hit.voice;
+  }
+  return voices.find((v) => v.lang?.toLowerCase().startsWith("en")) || voices[0] || null;
+}
+
+function speakLetter(letter, voice) {
   if (!("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(`Letter ${letter}`);
+  const utterance = new SpeechSynthesisUtterance(letter);
   utterance.rate = 0.72;
   utterance.pitch = 1.0;
   utterance.volume = 1.0;
+  if (voice) utterance.voice = voice;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
@@ -60,6 +71,7 @@ function App() {
   const [pressedPosition, setPressedPosition] = useState(false);
   const [pressedAudio, setPressedAudio] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => !isTutorialHidden());
+  const [ttsVoice, setTtsVoice] = useState(null);
 
   const responsesRef = useRef([]);
   const pressedPositionTimerRef = useRef(null);
@@ -94,6 +106,19 @@ function App() {
   }, [activeRound, positionKey, letterKey]);
 
   useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        setTtsVoice(pickPreferredVoice(voices));
+      }
+    }
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
+
+  useEffect(() => {
     if (feedbackTile == null || positionFeedback === "neutral") return;
     if (feedbackTileTimerRef.current) clearTimeout(feedbackTileTimerRef.current);
     feedbackTileTimerRef.current = setTimeout(() => setFeedbackTile(null), 420);
@@ -119,7 +144,7 @@ function App() {
       setActiveRound(i);
       setStatusText(`Round ${i + 1}/${rounds}`);
       setActiveStimulus(sequence[i]);
-      speakLetter(sequence[i].letter);
+      speakLetter(sequence[i].letter, ttsVoice);
       await sleep(stimulusMs);
       setActiveStimulus(null);
       await sleep(gapMs);
