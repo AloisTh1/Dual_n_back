@@ -1,0 +1,12 @@
+﻿{
+  "name": "dnb-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node server.mjs",
+    "start:dist": "node server.mjs dist",
+    "test": "node tests/run-tests.mjs"
+  }
+}

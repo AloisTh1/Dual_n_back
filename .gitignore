@@ -1,0 +1,8 @@
+﻿node_modules/
+.DS_Store
+Thumbs.db
+
+dnb_history.json
+
+# Build output can be regenerated in CI for Pages
+dist/
