@@ -33,9 +33,10 @@ function sleep(ms) {
 
 function speakLetter(letter) {
   if (!("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(letter);
-  utterance.rate = 0.9;
+  const utterance = new SpeechSynthesisUtterance(`Letter ${letter}`);
+  utterance.rate = 0.72;
   utterance.pitch = 1.0;
+  utterance.volume = 1.0;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
@@ -312,30 +313,13 @@ function App() {
           { className: "press-row" },
           h(
             "div",
-            { className: `press-pill ${pressedPosition ? "pressed" : ""}` },
-            `Position (${positionKey.toUpperCase()})`,
+            { className: `press-pill state-${positionFeedback} ${pressedPosition ? "pressed" : ""}` },
+            `Position (${positionKey.toUpperCase()}) - ${positionFeedback.toUpperCase()}`,
           ),
           h(
             "div",
-            { className: `press-pill ${pressedAudio ? "pressed" : ""}` },
-            `Audio (${letterKey.toUpperCase()})`,
-          ),
-        ),
-        h(
-          "div",
-          { className: "feedback-panel" },
-          h("div", { className: "feedback-title" }, "Round Feedback"),
-          h(
-            "div",
-            { className: "feedback-row" },
-            h("span", null, "Position"),
-            h("span", { className: `feedback-pill pill-${positionFeedback}` }, positionFeedback.toUpperCase()),
-          ),
-          h(
-            "div",
-            { className: "feedback-row" },
-            h("span", null, "Audio (TTS)"),
-            h("span", { className: `feedback-pill pill-${letterFeedback}` }, letterFeedback.toUpperCase()),
+            { className: `press-pill state-${letterFeedback} ${pressedAudio ? "pressed" : ""}` },
+            `Audio (${letterKey.toUpperCase()}) - ${letterFeedback.toUpperCase()}`,
           ),
         ),
       ),
