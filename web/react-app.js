@@ -489,6 +489,20 @@ function App() {
           )
         : null,
     ),
+    h(
+      "footer",
+      { className: "support-footer" },
+      h("span", null, "Support this project: "),
+      h(
+        "a",
+        {
+          href: "https://buymeacoffee.com/alois_devlp",
+          target: "_blank",
+          rel: "noreferrer",
+        },
+        "buymeacoffee.com/alois_devlp",
+      ),
+    ),
   );
 }
 

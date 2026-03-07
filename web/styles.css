@@ -244,6 +244,16 @@ button:disabled {
   text-align: left;
 }
 
+.support-footer {
+  margin-top: 1rem;
+  color: #2d4f7f;
+}
+
+.support-footer a {
+  color: #1d5fbf;
+  font-weight: 700;
+}
+
 .history-row {
   cursor: pointer;
 }

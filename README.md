@@ -39,3 +39,8 @@ On push to `main`, GitHub Actions builds and deploys `dist/` to Pages.
 
 This repo includes `.github/workflows/release.yml` and `.releaserc.json`.
 Push conventional commits to `main` (for example `feat: ...`, `fix: ...`) to generate automated GitHub releases and update `CHANGELOG.md`.
+
+## Support
+
+If you want to support development:
+https://buymeacoffee.com/alois_devlp
