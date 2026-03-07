@@ -55,6 +55,11 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
 
   let correctDecisions = 0;
   let totalDecisions = 0;
+  let hits = 0;
+  let misses = 0;
+  let falsePositives = 0;
+  let correctRejections = 0;
+  const mistakes = [];
 
   for (let i = n; i < sequence.length; i += 1) {
     const posExpected = sequence[i].position === sequence[i - n].position;
@@ -62,6 +67,56 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
 
     const posPressed = responses[i].has(positionKey);
     const letPressed = responses[i].has(letterKey);
+
+    if (posExpected && posPressed) hits += 1;
+    if (posExpected && !posPressed) {
+      misses += 1;
+      mistakes.push({
+        round: i + 1,
+        stream: "position",
+        errorType: "miss",
+        current: sequence[i].position,
+        nBack: sequence[i - n].position,
+        key: positionKey,
+      });
+    }
+    if (!posExpected && posPressed) {
+      falsePositives += 1;
+      mistakes.push({
+        round: i + 1,
+        stream: "position",
+        errorType: "false_positive",
+        current: sequence[i].position,
+        nBack: sequence[i - n].position,
+        key: positionKey,
+      });
+    }
+    if (!posExpected && !posPressed) correctRejections += 1;
+
+    if (letExpected && letPressed) hits += 1;
+    if (letExpected && !letPressed) {
+      misses += 1;
+      mistakes.push({
+        round: i + 1,
+        stream: "audio",
+        errorType: "miss",
+        current: sequence[i].letter,
+        nBack: sequence[i - n].letter,
+        key: letterKey,
+      });
+    }
+    if (!letExpected && letPressed) {
+      falsePositives += 1;
+      mistakes.push({
+        round: i + 1,
+        stream: "audio",
+        errorType: "false_positive",
+        current: sequence[i].letter,
+        nBack: sequence[i - n].letter,
+        key: letterKey,
+      });
+    }
+    if (!letExpected && !letPressed) correctRejections += 1;
 
     correctDecisions += Number(posExpected === posPressed);
     correctDecisions += Number(letExpected === letPressed);
@@ -73,6 +128,11 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
     score,
     correctDecisions,
     totalDecisions,
+    hits,
+    misses,
+    falsePositives,
+    correctRejections,
+    mistakes,
     passed: score >= PASS_THRESHOLD,
   };
 }

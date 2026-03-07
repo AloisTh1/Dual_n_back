@@ -46,6 +46,11 @@ run("evaluateResponses computes decision accuracy", () => {
   assert.equal(res.totalDecisions, 4);
   assert.equal(res.score, 1);
   assert.equal(res.passed, true);
+  assert.equal(res.hits, 3);
+  assert.equal(res.misses, 0);
+  assert.equal(res.falsePositives, 0);
+  assert.equal(res.correctRejections, 1);
+  assert.equal(res.mistakes.length, 0);
 });
 
 run("evaluateResponses penalizes misses and false positives", () => {
@@ -62,6 +67,15 @@ run("evaluateResponses penalizes misses and false positives", () => {
   assert.equal(res.totalDecisions, 4);
   assert.equal(res.score, 0.5);
   assert.equal(res.passed, false);
+  assert.equal(res.hits, 1);
+  assert.equal(res.misses, 1);
+  assert.equal(res.falsePositives, 1);
+  assert.equal(res.correctRejections, 1);
+  assert.equal(res.mistakes.length, 2);
+  assert.deepEqual(
+    res.mistakes.map((m) => `${m.stream}:${m.errorType}`),
+    ["position:miss", "audio:false_positive"],
+  );
 });
 
 run("level progression requires at least 70%", () => {

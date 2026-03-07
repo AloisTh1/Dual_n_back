@@ -105,7 +105,7 @@ label {
   font-weight: 700;
 }
 
-input, button {
+input, select, button {
   margin-top: 0.25rem;
   padding: 0.45rem;
   border-radius: 8px;
@@ -241,6 +241,43 @@ button:disabled {
 .history-table td {
   border: 1px solid #d2e1f8;
   padding: 0.45rem;
+  text-align: left;
+}
+
+.history-row {
+  cursor: pointer;
+}
+
+.history-row:hover {
+  background: #f2f7ff;
+}
+
+.history-row.selected {
+  background: #e3eeff;
+}
+
+.mistake-panel {
+  margin-top: 0.7rem;
+  border: 1px solid #c6daf9;
+  border-radius: 12px;
+  background: #f9fcff;
+  padding: 0.7rem;
+}
+
+.mistake-title {
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+}
+
+.mistake-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mistake-table th,
+.mistake-table td {
+  border: 1px solid #d2e1f8;
+  padding: 0.4rem;
   text-align: left;
 }
 

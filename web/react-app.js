@@ -10,6 +10,7 @@ const { createElement: h, useEffect, useMemo, useRef, useState } = React;
 
 const HISTORY_KEY = "dnb_history_v1";
 const TUTORIAL_KEY = "dnb_tutorial_hidden_v1";
+const TTS_LANG_KEY = "dnb_tts_lang_v1";
 
 function loadHistory() {
   try {
@@ -31,22 +32,30 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function pickPreferredVoice(voices) {
+function loadStoredTtsLang() {
+  return localStorage.getItem(TTS_LANG_KEY) || "en-US";
+}
+
+function pickPreferredVoice(voices, preferredLang) {
   const preferredTokens = ["zira", "samantha", "victoria", "female", "ava", "aria", "susan", "serena"];
-  const lowerVoices = voices.map((v) => ({ voice: v, name: v.name.toLowerCase() }));
+  const langPrefix = preferredLang.split("-")[0].toLowerCase();
+  const langVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith(langPrefix));
+  const pool = langVoices.length > 0 ? langVoices : voices;
+  const lowerVoices = pool.map((v) => ({ voice: v, name: v.name.toLowerCase() }));
   for (const token of preferredTokens) {
     const hit = lowerVoices.find((v) => v.name.includes(token));
     if (hit) return hit.voice;
   }
-  return voices.find((v) => v.lang?.toLowerCase().startsWith("en")) || voices[0] || null;
+  return pool[0] || null;
 }
 
-function speakLetter(letter, voice) {
+function speakLetter(letter, voice, lang) {
   if (!("speechSynthesis" in window)) return;
   const utterance = new SpeechSynthesisUtterance(letter);
   utterance.rate = 0.72;
   utterance.pitch = 1.0;
   utterance.volume = 1.0;
+  utterance.lang = lang;
   if (voice) utterance.voice = voice;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
@@ -54,6 +63,7 @@ function speakLetter(letter, voice) {
 
 function App() {
   const [history, setHistory] = useState(() => loadHistory());
+  const [selectedHistoryId, setSelectedHistoryId] = useState(null);
   const [level, setLevel] = useState(() => startLevelFromHistory(loadHistory()));
   const [rounds, setRounds] = useState(20);
   const [stimulusMs, setStimulusMs] = useState(1500);
@@ -72,6 +82,8 @@ function App() {
   const [pressedAudio, setPressedAudio] = useState(false);
   const [showTutorial, setShowTutorial] = useState(() => !isTutorialHidden());
   const [ttsVoice, setTtsVoice] = useState(null);
+  const [ttsLang, setTtsLang] = useState(() => loadStoredTtsLang());
+  const [ttsLangOptions, setTtsLangOptions] = useState([{ value: "en-US", label: "English (United States)" }]);
 
   const responsesRef = useRef([]);
   const pressedPositionTimerRef = useRef(null);
@@ -110,13 +122,29 @@ function App() {
     function loadVoices() {
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
-        setTtsVoice(pickPreferredVoice(voices));
+        const distinctLangs = Array.from(
+          new Set(
+            voices
+              .map((v) => v.lang)
+              .filter(Boolean),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+        const options = distinctLangs.map((lang) => ({ value: lang, label: lang }));
+        const resolvedOptions = options.length > 0 ? options : [{ value: "en-US", label: "en-US" }];
+        setTtsLangOptions(resolvedOptions);
+        const hasLang = resolvedOptions.some((opt) => opt.value === ttsLang);
+        const effectiveLang = hasLang ? ttsLang : resolvedOptions[0].value;
+        if (!hasLang) {
+          setTtsLang(effectiveLang);
+          localStorage.setItem(TTS_LANG_KEY, effectiveLang);
+        }
+        setTtsVoice(pickPreferredVoice(voices, effectiveLang));
       }
     }
     loadVoices();
     window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
     return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-  }, []);
+  }, [ttsLang]);
 
   useEffect(() => {
     if (feedbackTile == null || positionFeedback === "neutral") return;
@@ -128,6 +156,10 @@ function App() {
   }, [feedbackTile, positionFeedback]);
 
   const historyRows = useMemo(() => history.slice().reverse(), [history]);
+  const selectedHistoryEntry = useMemo(
+    () => history.find((row) => (row.id || `${row.timestamp}-${row.level}`) === selectedHistoryId) || null,
+    [history, selectedHistoryId],
+  );
 
   async function runSession() {
     const posKey = positionKey.trim().toLowerCase();
@@ -144,7 +176,7 @@ function App() {
       setActiveRound(i);
       setStatusText(`Round ${i + 1}/${rounds}`);
       setActiveStimulus(sequence[i]);
-      speakLetter(sequence[i].letter, ttsVoice);
+      speakLetter(sequence[i].letter, ttsVoice, ttsLang);
       await sleep(stimulusMs);
       setActiveStimulus(null);
       await sleep(gapMs);
@@ -188,20 +220,23 @@ function App() {
       const nextLevel = determineNextLevel(level, result.score);
 
       const entry = {
+        id: `${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         timestamp: new Date().toISOString(),
         level,
         score: result.score,
         passed: result.passed,
         correctDecisions: result.correctDecisions,
         totalDecisions: result.totalDecisions,
+        mistakes: result.mistakes,
       };
 
       const updatedHistory = [...history, entry];
       saveHistory(updatedHistory);
       setHistory(updatedHistory);
+      setSelectedHistoryId(entry.id);
 
       setScoreText(
-        `Score: ${(result.score * 100).toFixed(1)}% (${result.correctDecisions}/${result.totalDecisions})`,
+        `Score: ${(result.score * 100).toFixed(1)}% (${result.correctDecisions}/${result.totalDecisions}) | Hits: ${result.hits} | Misses: ${result.misses} | Wrong clicks: ${result.falsePositives}`,
       );
       setStatusText(
         result.passed
@@ -229,6 +264,7 @@ function App() {
   function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     setHistory([]);
+    setSelectedHistoryId(null);
     setLevel(3);
     setStatusText("History cleared.");
     setScoreText("Score: -");
@@ -272,6 +308,7 @@ function App() {
             h("li", null, "You can press both keys if both matches are true."),
             h("li", null, "Green means correct detection. Red means miss or false positive."),
             h("li", null, "You need at least 70% to pass and unlock the next N level."),
+            h("li", null, "Click any row in History to inspect every miss and wrong click from that session."),
           ),
           h("h3", null, "Example (Dual 3-back)"),
           h(
@@ -309,6 +346,17 @@ function App() {
       controlNumber("Gap ms", "Delay between stimuli, in milliseconds.", gapMs, setGapMs, 100, isRunning),
       controlText("Position key", "Key used when current tile matches N-back tile (default A).", positionKey, setPositionKey, isRunning),
       controlText("Audio key", "Key used when spoken letter matches N-back letter (default L).", letterKey, setLetterKey, isRunning),
+      controlSelect(
+        "TTS language",
+        "Language used for spoken letters. Uses the closest available voice for that language.",
+        ttsLang,
+        ttsLangOptions,
+        (next) => {
+          setTtsLang(next);
+          localStorage.setItem(TTS_LANG_KEY, next);
+        },
+        isRunning,
+      ),
       h(
         "button",
         { id: "startBtn", onClick: startSession, disabled: isRunning },
@@ -365,7 +413,14 @@ function App() {
               ...historyRows.map((row) =>
                 h(
                   "tr",
-                  { key: `${row.timestamp}-${row.level}` },
+                  {
+                    key: row.id || `${row.timestamp}-${row.level}`,
+                    className:
+                      (row.id || `${row.timestamp}-${row.level}`) === selectedHistoryId
+                        ? "history-row selected"
+                        : "history-row",
+                    onClick: () => setSelectedHistoryId(row.id || `${row.timestamp}-${row.level}`),
+                  },
                   h("td", null, row.timestamp),
                   h("td", null, String(row.level)),
                   h("td", null, `${(row.score * 100).toFixed(1)}%`),
@@ -375,6 +430,53 @@ function App() {
               ),
             ),
           ),
+      selectedHistoryEntry
+        ? h(
+            "div",
+            { className: "mistake-panel" },
+            h(
+              "div",
+              { className: "mistake-title" },
+              `Session details - ${selectedHistoryEntry.timestamp} (N=${selectedHistoryEntry.level})`,
+            ),
+            !selectedHistoryEntry.mistakes || selectedHistoryEntry.mistakes.length === 0
+              ? h("div", null, "No mistakes in this session.")
+              : h(
+                  "table",
+                  { className: "mistake-table" },
+                  h(
+                    "thead",
+                    null,
+                    h(
+                      "tr",
+                      null,
+                      h("th", null, "Round"),
+                      h("th", null, "Stream"),
+                      h("th", null, "Type"),
+                      h("th", null, "Current"),
+                      h("th", null, "N-back"),
+                      h("th", null, "Key"),
+                    ),
+                  ),
+                  h(
+                    "tbody",
+                    null,
+                    ...selectedHistoryEntry.mistakes.map((m, idx) =>
+                      h(
+                        "tr",
+                        { key: `${m.round}-${m.stream}-${idx}` },
+                        h("td", null, String(m.round)),
+                        h("td", null, m.stream),
+                        h("td", null, m.errorType === "false_positive" ? "wrong click" : "miss"),
+                        h("td", null, String(m.current)),
+                        h("td", null, String(m.nBack)),
+                        h("td", null, m.key.toUpperCase()),
+                      ),
+                    ),
+                  ),
+                ),
+          )
+        : null,
     ),
   );
 }
@@ -407,6 +509,24 @@ function controlText(label, tooltip, value, setter, disabled) {
       disabled,
       onChange: (e) => setter(e.target.value.toLowerCase()),
     }),
+  );
+}
+
+function controlSelect(label, tooltip, value, options, setter, disabled) {
+  return h(
+    "label",
+    { title: tooltip },
+    h("span", { className: "label-text" }, label),
+    h(
+      "select",
+      {
+        value,
+        title: tooltip,
+        disabled,
+        onChange: (e) => setter(e.target.value),
+      },
+      ...options.map((opt) => h("option", { key: opt.value, value: opt.value }, opt.label)),
+    ),
   );
 }
 
