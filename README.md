@@ -1,5 +1,7 @@
 ﻿# Dual N-Back (React)
 
+Live site: https://aloisth1.github.io/Dual_n_back/
+
 A static React-based Dual N-Back game with:
 - Position + spoken-letter streams
 - Standard auditory letter set: `C, H, K, L, Q, R, S, T` (reduced confusability)
