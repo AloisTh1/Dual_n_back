@@ -2,6 +2,7 @@
 
 A static React-based Dual N-Back game with:
 - Position + spoken-letter streams
+- Standard auditory letter set: `C, H, K, L, Q, R, S, T` (reduced confusability)
 - Custom key bindings (`A` for position, `L` for audio by default)
 - Per-round feedback (green/red)
 - Level progression at 70%
@@ -33,3 +34,8 @@ Outputs to `dist/`.
 
 This repo includes `.github/workflows/deploy-pages.yml`.
 On push to `main`, GitHub Actions builds and deploys `dist/` to Pages.
+
+## Semantic Release
+
+This repo includes `.github/workflows/release.yml` and `.releaserc.json`.
+Push conventional commits to `main` (for example `feat: ...`, `fix: ...`) to generate automated GitHub releases and update `CHANGELOG.md`.

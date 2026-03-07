@@ -269,6 +269,11 @@ button:disabled {
   margin-bottom: 0.45rem;
 }
 
+.mistake-subtitle {
+  color: #2d4f7f;
+  margin-bottom: 0.45rem;
+}
+
 .mistake-table {
   width: 100%;
   border-collapse: collapse;

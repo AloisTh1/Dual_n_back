@@ -224,10 +224,12 @@ function App() {
         timestamp: new Date().toISOString(),
         level,
         score: result.score,
+        scientificScore: result.scientificScore,
         passed: result.passed,
         correctDecisions: result.correctDecisions,
         totalDecisions: result.totalDecisions,
         mistakes: result.mistakes,
+        modalities: result.modalities,
       };
 
       const updatedHistory = [...history, entry];
@@ -236,7 +238,7 @@ function App() {
       setSelectedHistoryId(entry.id);
 
       setScoreText(
-        `Score: ${(result.score * 100).toFixed(1)}% (${result.correctDecisions}/${result.totalDecisions}) | Hits: ${result.hits} | Misses: ${result.misses} | Wrong clicks: ${result.falsePositives}`,
+        `Accuracy: ${(result.score * 100).toFixed(1)}% | d': ${result.scientificScore.toFixed(2)} (P ${result.modalities.position.dPrime.toFixed(2)} / A ${result.modalities.audio.dPrime.toFixed(2)}) | Hits: ${result.hits} | Misses: ${result.misses} | Wrong clicks: ${result.falsePositives}`,
       );
       setStatusText(
         result.passed
@@ -307,6 +309,7 @@ function App() {
             h("li", null, "Press Audio key (default L) if the spoken letter matches N rounds ago."),
             h("li", null, "You can press both keys if both matches are true."),
             h("li", null, "Green means correct detection. Red means miss or false positive."),
+            h("li", null, "Scientific grade uses d' (signal detection): higher hits and lower false alarms increase score."),
             h("li", null, "You need at least 70% to pass and unlock the next N level."),
             h("li", null, "Click any row in History to inspect every miss and wrong click from that session."),
           ),
@@ -314,7 +317,7 @@ function App() {
           h(
             "p",
             { className: "tutorial-example" },
-            "Letters: A, C, B, D, E, B. At round 6, compare to round 3: both are B. Press Audio (L). If you press L, feedback is green; if not, red.",
+            "Letters: C, H, K, L, Q, K. At round 6, compare to round 3: both are K. Press Audio (L). If you press L, feedback is green; if not, red.",
           ),
           h(
             "p",
@@ -406,7 +409,7 @@ function App() {
         : h(
             "table",
             { className: "history-table" },
-            h("thead", null, h("tr", null, h("th", null, "Time"), h("th", null, "Level"), h("th", null, "Score"), h("th", null, "Decisions"), h("th", null, "Result"))),
+            h("thead", null, h("tr", null, h("th", null, "Time"), h("th", null, "Level"), h("th", null, "Acc"), h("th", null, "d'"), h("th", null, "Decisions"), h("th", null, "Result"))),
             h(
               "tbody",
               null,
@@ -424,6 +427,7 @@ function App() {
                   h("td", null, row.timestamp),
                   h("td", null, String(row.level)),
                   h("td", null, `${(row.score * 100).toFixed(1)}%`),
+                  h("td", null, typeof row.scientificScore === "number" ? row.scientificScore.toFixed(2) : "-"),
                   h("td", null, `${row.correctDecisions}/${row.totalDecisions}`),
                   h("td", { className: row.passed ? "pass" : "fail" }, row.passed ? "PASS" : "FAIL"),
                 ),
@@ -437,8 +441,15 @@ function App() {
             h(
               "div",
               { className: "mistake-title" },
-              `Session details - ${selectedHistoryEntry.timestamp} (N=${selectedHistoryEntry.level})`,
+              `Session details - ${selectedHistoryEntry.timestamp} (N=${selectedHistoryEntry.level}) | d': ${typeof selectedHistoryEntry.scientificScore === "number" ? selectedHistoryEntry.scientificScore.toFixed(2) : "-"}`,
             ),
+            selectedHistoryEntry.modalities
+              ? h(
+                  "div",
+                  { className: "mistake-subtitle" },
+                  `Position d': ${selectedHistoryEntry.modalities.position.dPrime.toFixed(2)} | Audio d': ${selectedHistoryEntry.modalities.audio.dPrime.toFixed(2)}`,
+                )
+              : null,
             !selectedHistoryEntry.mistakes || selectedHistoryEntry.mistakes.length === 0
               ? h("div", null, "No mistakes in this session.")
               : h(

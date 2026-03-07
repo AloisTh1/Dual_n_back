@@ -1,6 +1,6 @@
 ﻿export const PASS_THRESHOLD = 0.7;
 export const POSITIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-export const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
+export const LETTERS = ["C", "H", "K", "L", "Q", "R", "S", "T"];
 
 function lcg(seed) {
   let state = (seed ?? Date.now()) >>> 0;
