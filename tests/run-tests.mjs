@@ -42,8 +42,8 @@ run("evaluateResponses computes decision accuracy", () => {
   const responses = [new Set(), new Set(), new Set(["v"]), new Set(["v", "a"])];
   const res = evaluateResponses({ sequence, responses, n: 2, positionKey: "v", letterKey: "a" });
 
-  assert.equal(res.correctDecisions, 4);
-  assert.equal(res.totalDecisions, 4);
+  assert.equal(res.correctDecisions, 3);
+  assert.equal(res.totalDecisions, 3);
   assert.equal(res.score, 1);
   assert.equal(res.passed, true);
   assert.equal(res.hits, 3);
@@ -51,6 +51,9 @@ run("evaluateResponses computes decision accuracy", () => {
   assert.equal(res.falsePositives, 0);
   assert.equal(res.correctRejections, 1);
   assert.equal(res.mistakes.length, 0);
+  assert.ok(res.scientificScore > 0);
+  assert.ok(res.modalities.position.dPrime > 0);
+  assert.ok(res.modalities.audio.dPrime > 0);
 });
 
 run("evaluateResponses penalizes misses and false positives", () => {
@@ -63,9 +66,9 @@ run("evaluateResponses penalizes misses and false positives", () => {
   const responses = [new Set(), new Set(), new Set(["a"]), new Set(["v"])];
   const res = evaluateResponses({ sequence, responses, n: 2, positionKey: "v", letterKey: "a" });
 
-  assert.equal(res.correctDecisions, 2);
-  assert.equal(res.totalDecisions, 4);
-  assert.equal(res.score, 0.5);
+  assert.equal(res.correctDecisions, 1);
+  assert.equal(res.totalDecisions, 3);
+  assert.equal(res.score, 1 / 3);
   assert.equal(res.passed, false);
   assert.equal(res.hits, 1);
   assert.equal(res.misses, 1);
@@ -76,6 +79,9 @@ run("evaluateResponses penalizes misses and false positives", () => {
     res.mistakes.map((m) => `${m.stream}:${m.errorType}`),
     ["position:miss", "audio:false_positive"],
   );
+  assert.ok(res.scientificScore < 2);
+  assert.ok(res.modalities.position.hitRate >= 0 && res.modalities.position.hitRate <= 1);
+  assert.ok(res.modalities.audio.falseAlarmRate >= 0 && res.modalities.audio.falseAlarmRate <= 1);
 });
 
 run("level progression requires at least 70%", () => {

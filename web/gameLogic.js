@@ -16,6 +16,48 @@ function pickDifferent(pool, forbidden, rnd) {
   return filtered[idx];
 }
 
+// Acklam inverse-normal approximation used to compute d' via z-scores.
+function normInv(p) {
+  const a = [-39.6968302866538, 220.946098424521, -275.928510446969, 138.357751867269, -30.6647980661472, 2.50662827745924];
+  const b = [-54.4760987982241, 161.585836858041, -155.698979859887, 66.8013118877197, -13.2806815528857];
+  const c = [-0.00778489400243029, -0.322396458041136, -2.40075827716184, -2.54973253934373, 4.37466414146497, 2.93816398269878];
+  const d = [0.00778469570904146, 0.32246712907004, 2.445134137143, 3.75440866190742];
+  const plow = 0.02425;
+  const phigh = 1 - plow;
+
+  if (p < plow) {
+    const q = Math.sqrt(-2 * Math.log(p));
+    return (
+      (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+    );
+  }
+  if (p <= phigh) {
+    const q = p - 0.5;
+    const r = q * q;
+    return (
+      (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+      (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+    );
+  }
+  const q = Math.sqrt(-2 * Math.log(1 - p));
+  return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+    ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+}
+
+function sdtFromCounts({ hits, misses, falsePositives, correctRejections }) {
+  const signalTrials = hits + misses;
+  const noiseTrials = falsePositives + correctRejections;
+  const adjustedHitRate = (hits + 0.5) / (signalTrials + 1);
+  const adjustedFalseAlarmRate = (falsePositives + 0.5) / (noiseTrials + 1);
+
+  return {
+    hitRate: signalTrials === 0 ? 0 : hits / signalTrials,
+    falseAlarmRate: noiseTrials === 0 ? 0 : falsePositives / noiseTrials,
+    dPrime: normInv(adjustedHitRate) - normInv(adjustedFalseAlarmRate),
+  };
+}
+
 export function generateSequence({ n, rounds, matchProbability = 0.3, seed }) {
   if (!Number.isInteger(n) || n < 1) throw new Error("n must be >= 1");
   if (!Number.isInteger(rounds) || rounds <= n) throw new Error("rounds must be > n");
@@ -59,6 +101,17 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
   let misses = 0;
   let falsePositives = 0;
   let correctRejections = 0;
+
+  let positionHits = 0;
+  let positionMisses = 0;
+  let positionFalsePositives = 0;
+  let positionCorrectRejections = 0;
+
+  let audioHits = 0;
+  let audioMisses = 0;
+  let audioFalsePositives = 0;
+  let audioCorrectRejections = 0;
+
   const mistakes = [];
 
   for (let i = n; i < sequence.length; i += 1) {
@@ -68,9 +121,13 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
     const posPressed = responses[i].has(positionKey);
     const letPressed = responses[i].has(letterKey);
 
-    if (posExpected && posPressed) hits += 1;
+    if (posExpected && posPressed) {
+      hits += 1;
+      positionHits += 1;
+    }
     if (posExpected && !posPressed) {
       misses += 1;
+      positionMisses += 1;
       mistakes.push({
         round: i + 1,
         stream: "position",
@@ -82,6 +139,7 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
     }
     if (!posExpected && posPressed) {
       falsePositives += 1;
+      positionFalsePositives += 1;
       mistakes.push({
         round: i + 1,
         stream: "position",
@@ -91,11 +149,18 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
         key: positionKey,
       });
     }
-    if (!posExpected && !posPressed) correctRejections += 1;
+    if (!posExpected && !posPressed) {
+      correctRejections += 1;
+      positionCorrectRejections += 1;
+    }
 
-    if (letExpected && letPressed) hits += 1;
+    if (letExpected && letPressed) {
+      hits += 1;
+      audioHits += 1;
+    }
     if (letExpected && !letPressed) {
       misses += 1;
+      audioMisses += 1;
       mistakes.push({
         round: i + 1,
         stream: "audio",
@@ -107,6 +172,7 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
     }
     if (!letExpected && letPressed) {
       falsePositives += 1;
+      audioFalsePositives += 1;
       mistakes.push({
         round: i + 1,
         stream: "audio",
@@ -116,14 +182,50 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
         key: letterKey,
       });
     }
-    if (!letExpected && !letPressed) correctRejections += 1;
+    if (!letExpected && !letPressed) {
+      correctRejections += 1;
+      audioCorrectRejections += 1;
+    }
 
-    correctDecisions += Number(posExpected === posPressed);
-    correctDecisions += Number(letExpected === letPressed);
-    totalDecisions += 2;
+    // Scoring policy: only count actions that matter.
+    // - Hit: +1
+    // - Miss: contributes to denominator only
+    // - False positive: contributes to denominator only
+    // Correct rejections do not change numerator or denominator.
+    if (posExpected && posPressed) {
+      correctDecisions += 1;
+      totalDecisions += 1;
+    } else if (posExpected && !posPressed) {
+      totalDecisions += 1;
+    } else if (!posExpected && posPressed) {
+      totalDecisions += 1;
+    }
+
+    if (letExpected && letPressed) {
+      correctDecisions += 1;
+      totalDecisions += 1;
+    } else if (letExpected && !letPressed) {
+      totalDecisions += 1;
+    } else if (!letExpected && letPressed) {
+      totalDecisions += 1;
+    }
   }
 
   const score = totalDecisions === 0 ? 0 : correctDecisions / totalDecisions;
+  const positionSdt = sdtFromCounts({
+    hits: positionHits,
+    misses: positionMisses,
+    falsePositives: positionFalsePositives,
+    correctRejections: positionCorrectRejections,
+  });
+  const audioSdt = sdtFromCounts({
+    hits: audioHits,
+    misses: audioMisses,
+    falsePositives: audioFalsePositives,
+    correctRejections: audioCorrectRejections,
+  });
+  const scientificScore = (positionSdt.dPrime + audioSdt.dPrime) / 2;
+
   return {
     score,
     correctDecisions,
@@ -133,6 +235,23 @@ export function evaluateResponses({ sequence, responses, n, positionKey, letterK
     falsePositives,
     correctRejections,
     mistakes,
+    scientificScore,
+    modalities: {
+      position: {
+        hits: positionHits,
+        misses: positionMisses,
+        falsePositives: positionFalsePositives,
+        correctRejections: positionCorrectRejections,
+        ...positionSdt,
+      },
+      audio: {
+        hits: audioHits,
+        misses: audioMisses,
+        falsePositives: audioFalsePositives,
+        correctRejections: audioCorrectRejections,
+        ...audioSdt,
+      },
+    },
     passed: score >= PASS_THRESHOLD,
   };
 }
